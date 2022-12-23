@@ -1,0 +1,14 @@
+name: DungeonTower
+version: '${version}'
+main: tororo1066.dungeontower.DungeonTower
+api-version: 1.17
+depend:
+  - MythicMobs
+commands:
+  dungeontower:
+    aliases:
+      - tower
+      - dungeon
+  dungeontask:
+    aliases:
+      - dtask

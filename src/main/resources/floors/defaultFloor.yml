@@ -1,0 +1,6 @@
+defaultFloor:
+  startLoc: 1000,30,1000
+  endLoc: 1050,40,1050
+  clearTasks:
+    - KILL_SPAWNER_MOBS
+  joinCommands:

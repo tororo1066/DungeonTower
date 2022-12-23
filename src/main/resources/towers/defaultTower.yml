@@ -1,0 +1,5 @@
+name: "テストの塔"
+partyLimit: 4
+floors:
+  1f:
+    - 10000,defaultFloor

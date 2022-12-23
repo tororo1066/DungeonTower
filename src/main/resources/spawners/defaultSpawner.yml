@@ -1,0 +1,8 @@
+defaultSpawner:
+  mob: CAVE_SPIDER
+  cooltime: 60
+  max: 3
+  radius: 3
+  level: 0.0
+  activateRange: 10
+  navigate: 2
