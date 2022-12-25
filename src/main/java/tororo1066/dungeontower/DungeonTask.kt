@@ -64,6 +64,7 @@ class DungeonTask(val party: PartyData, val tower: TowerData): Thread() {
         if (party.players.size == 0)return
         nowThread = this
         party.nowTask = this
+        DungeonTower.partiesData[party.parent]!!.nowTask = this
         party.broadCast(SStr("&c${tower.name}&aにテレポート中..."))
         runTask { party.smokeStan(60) }
         nowCallX = DungeonTower.callX
@@ -121,7 +122,7 @@ class DungeonTask(val party: PartyData, val tower: TowerData): Thread() {
                         end = true
                         sEvent.unregisterAll()
                         party.teleport(DungeonTower.lobbyLocation)
-                        nowFloor.removeFloor(Location(DungeonTower.dungeonWorld, preventCallX.toDouble(), 50.0, 0.0))
+                        nowFloor.removeFloor(Location(DungeonTower.dungeonWorld, nowCallX.toDouble(), 50.0, 0.0))
 
                         nowThread.interrupt()
                     }

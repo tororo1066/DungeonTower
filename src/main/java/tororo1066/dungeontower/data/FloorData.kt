@@ -19,16 +19,20 @@ import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import tororo1066.dungeontower.DungeonTower
 import tororo1066.tororopluginapi.sEvent.SEvent
+import tororo1066.tororopluginapi.utils.LocType
+import tororo1066.tororopluginapi.utils.toLocString
 import java.util.UUID
 import kotlin.math.min
 import kotlin.random.Random
 
 class FloorData: Cloneable {
 
-    enum class ClearTask(var need: Int = 0, var count: Int = 0, var clear: Boolean = false){
+    enum class ClearTaskEnum{
         KILL_SPAWNER_MOBS,
         ENTER_COMMAND
     }
+
+    class ClearTask(val type: ClearTaskEnum,var need: Int = 0, var count: Int = 0, var clear: Boolean = false)
     var includeName = ""
 
     lateinit var startLoc: Location
@@ -46,6 +50,7 @@ class FloorData: Cloneable {
     val spawnerClearTasks = HashMap<UUID,Boolean>()
 
     fun callFloor(loc: Location): Boolean {
+
         val lowX = min(startLoc.blockX, endLoc.blockX)
         val lowY = min(startLoc.blockY, endLoc.blockY)
         val lowZ = min(startLoc.blockZ, endLoc.blockZ)
@@ -98,7 +103,7 @@ class FloorData: Cloneable {
                                                     if (spawner.kill >= spawner.navigateKill){
                                                         spawnerClearTasks[randUUID] = true
                                                         if (spawnerClearTasks.values.none { !it }){
-                                                            clearTask.filter { it.name == ClearTask.KILL_SPAWNER_MOBS.name }.forEach {
+                                                            clearTask.filter { it.type == ClearTaskEnum.KILL_SPAWNER_MOBS }.forEach {
                                                                 it.clear = true
                                                             }
                                                         }
@@ -107,6 +112,12 @@ class FloorData: Cloneable {
                                             }
                                             override fun cancel() {
                                                 sEvent.unregisterAll()
+                                                Bukkit.getScheduler().runTask(DungeonTower.plugin, Runnable {
+                                                    DungeonTower.dungeonWorld.entities.filter { it.persistentDataContainer.get(NamespacedKey(DungeonTower.plugin, "dmob"),
+                                                        PersistentDataType.STRING) == randUUID.toString() }.forEach {
+                                                            it.remove()
+                                                    }
+                                                })
                                                 super.cancel()
                                             }
 
@@ -173,6 +184,7 @@ class FloorData: Cloneable {
                 }
             }
         }
+
     }
 
     public override fun clone(): FloorData {
@@ -193,8 +205,9 @@ class FloorData: Cloneable {
                 data.joinCommands.addAll(section.getStringList("joinCommands"))
                 section.getStringList("clearTasks").forEach {
                     val split = it.split(",")
-                    val task = ClearTask.valueOf(split[0].uppercase())
-                    if (task == ClearTask.ENTER_COMMAND){
+                    val taskEnum = ClearTaskEnum.valueOf(split[0].uppercase())
+                    val task = ClearTask(taskEnum)
+                    if (taskEnum == ClearTaskEnum.ENTER_COMMAND){
                         task.need = split[1].toInt()
                     }
                     data.clearTask.add(task)

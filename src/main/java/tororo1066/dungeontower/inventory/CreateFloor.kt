@@ -24,20 +24,20 @@ class CreateFloor(val floor: FloorData): LargeSInventory(DungeonTower.plugin,"�
                 val inv = object : LargeSInventory(DungeonTower.plugin, "タスクを設定する") {
                     override fun renderMenu(): Boolean {
                         val items = arrayListOf(
-                            SInventoryItem(Material.SPAWNER).setDisplayName("§aスポナーのモブをキルする").addLore(if (floor.clearTask.contains(FloorData.ClearTask.KILL_SPAWNER_MOBS)) "§f§l[§a§l有効§f§l]" else "§f§l[§c§l無効§f§l]").setCanClick(false).setClickEvent {
-                                if (floor.clearTask.contains(FloorData.ClearTask.KILL_SPAWNER_MOBS)){
-                                    floor.clearTask.remove(FloorData.ClearTask.KILL_SPAWNER_MOBS)
+                            SInventoryItem(Material.SPAWNER).setDisplayName("§aスポナーのモブをキルする").addLore(if (floor.clearTask.any { any-> any.type == FloorData.ClearTaskEnum.KILL_SPAWNER_MOBS }) "§f§l[§a§l有効§f§l]" else "§f§l[§c§l無効§f§l]").setCanClick(false).setClickEvent {
+                                if (floor.clearTask.any { any-> any.type == FloorData.ClearTaskEnum.KILL_SPAWNER_MOBS }){
+                                    floor.clearTask.removeIf { remove-> remove.type == FloorData.ClearTaskEnum.KILL_SPAWNER_MOBS }
                                 } else {
-                                    floor.clearTask.add(FloorData.ClearTask.KILL_SPAWNER_MOBS)
+                                    floor.clearTask.add(FloorData.ClearTask(FloorData.ClearTaskEnum.KILL_SPAWNER_MOBS))
                                 }
                                 allRenderMenu()
                             },
-                            createInputItem(SItem(Material.COMMAND_BLOCK).setDisplayName("§aコマンドを実行する(/dtask PlayerInRadius{<半径>})").addLore(if (floor.clearTask.contains(FloorData.ClearTask.ENTER_COMMAND)) "§f§l[§a§l有効§f§l]" else "§f§l[§c§l無効§f§l]"),
+                            createInputItem(SItem(Material.COMMAND_BLOCK).setDisplayName("§aコマンドを実行する(/dtask PlayerInRadius{<半径>})").addLore(if (floor.clearTask.any { any-> any.type == FloorData.ClearTaskEnum.ENTER_COMMAND }) "§f§l[§a§l有効§f§l]" else "§f§l[§c§l無効§f§l]"),
                             Int::class.java,"コマンドを実行しないといけない数") { int, _ ->
-                                if (floor.clearTask.contains(FloorData.ClearTask.KILL_SPAWNER_MOBS)){
-                                    floor.clearTask.remove(FloorData.ClearTask.KILL_SPAWNER_MOBS)
+                                if (floor.clearTask.any { any-> any.type == FloorData.ClearTaskEnum.ENTER_COMMAND }){
+                                    floor.clearTask.removeIf { remove-> remove.type == FloorData.ClearTaskEnum.ENTER_COMMAND }
                                 } else {
-                                    floor.clearTask.add(FloorData.ClearTask.KILL_SPAWNER_MOBS.apply { need = int })
+                                    floor.clearTask.add(FloorData.ClearTask(FloorData.ClearTaskEnum.KILL_SPAWNER_MOBS, need = int))
                                 }
                             }
                         )
@@ -75,12 +75,12 @@ class CreateFloor(val floor: FloorData): LargeSInventory(DungeonTower.plugin,"�
                 section.set("endLoc","${floor.endLoc.blockX},${floor.endLoc.blockY},${floor.endLoc.blockZ}")
                 val clearTasks = ArrayList<String>()
                 floor.clearTask.forEach {
-                    when(it){
-                        FloorData.ClearTask.KILL_SPAWNER_MOBS->{
-                            clearTasks.add(it.name)
+                    when(it.type){
+                        FloorData.ClearTaskEnum.KILL_SPAWNER_MOBS->{
+                            clearTasks.add(it.type.name)
                         }
-                        FloorData.ClearTask.ENTER_COMMAND->{
-                            clearTasks.add("${it.name},${it.need}")
+                        FloorData.ClearTaskEnum.ENTER_COMMAND->{
+                            clearTasks.add("${it.type.name},${it.need}")
                         }
                     }
                 }

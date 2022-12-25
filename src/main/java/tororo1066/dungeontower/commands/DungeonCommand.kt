@@ -10,6 +10,7 @@ import tororo1066.dungeontower.DungeonTower.Companion.sendPrefixMsg
 import tororo1066.dungeontower.data.*
 import tororo1066.dungeontower.inventory.CreateFloor
 import tororo1066.dungeontower.inventory.CreateLoot
+import tororo1066.dungeontower.inventory.CreateSpawner
 import tororo1066.dungeontower.inventory.CreateTower
 import tororo1066.tororopluginapi.SStr
 import tororo1066.tororopluginapi.annotation.SCommandBody
@@ -140,6 +141,32 @@ class DungeonCommand: SCommand("dungeontower",DungeonTower.prefix.toString(),"to
         it.sender.sendPrefixMsg(SStr("&a${p.name}がパーティに参加しました！"))
     }
 
+    @SCommandBody
+    val leaveParty = party().addArg(SCommandArg("leave")).setPlayerExecutor {
+        if (DungeonTower.playNow.contains(it.sender.uniqueId)){
+            it.sender.sendPrefixMsg(SStr("&4プレイ中はこのコマンドを実行できません"))
+            return@setPlayerExecutor
+        }
+        if (!DungeonTower.partiesData.containsKey(it.sender.uniqueId)){
+            it.sender.sendPrefixMsg(SStr("&4パーティに入っていません"))
+            return@setPlayerExecutor
+        }
+        val data = DungeonTower.partiesData[it.sender.uniqueId]
+        if (data == null){
+            DungeonTower.partiesData.values.filterNotNull().forEach { party ->
+                if (!party.players.containsKey(it.sender.uniqueId))return@forEach
+                party.broadCast(SStr("&c${it.sender.name}がパーティから退出しました"))
+                party.players.remove(it.sender.uniqueId)
+                DungeonTower.partiesData.remove(it.sender.uniqueId)
+            }
+        } else {
+            data.broadCast(SStr("&cパーティが解散されました"))
+            data.players.keys.forEach { uuid ->
+                DungeonTower.partiesData.remove(uuid)
+            }
+        }
+    }
+
     private fun opCommand(): SCommandObject {
         return command().addArg(SCommandArg("op")).addNeedPermission("tower.op")
     }
@@ -154,7 +181,7 @@ class DungeonCommand: SCommand("dungeontower",DungeonTower.prefix.toString(),"to
     }
 
     @SCommandBody
-    val createFloor = opCommand().addArg(SCommandArg("floor")).addArg(SCommandArg("create")).addArg(SCommandArg(SCommandArgType.STRING).addAlias("内部名")).setPlayerExecutor {
+    val createFloor = opCommand().addArg(SCommandArg("floor")).addArg(SCommandArg("create")).addArg(SCommandArg(SCommandArgType.STRING).addAlias("内部名").addAlias(DungeonTower.floorData.keys)).setPlayerExecutor {
         if (DungeonTower.floorData.containsKey(it.args[3])){
             it.sender.sendPrefixMsg(SStr("&c既に存在してるよ！"))
             return@setPlayerExecutor
@@ -164,23 +191,34 @@ class DungeonCommand: SCommand("dungeontower",DungeonTower.prefix.toString(),"to
         val secondLoc = meta.persistentDataContainer[NamespacedKey(DungeonTower.plugin,"secondloc"), PersistentDataType.STRING]
 
         if (firstLoc == null || secondLoc == null){
+            if (DungeonTower.floorData.containsKey(it.args[3])){
+                CreateFloor(DungeonTower.floorData[it.args[3]]!!.clone()).open(it.sender)
+                return@setPlayerExecutor
+            }
             it.sender.sendPrefixMsg(SStr("&c範囲指定してね！"))
+            return@setPlayerExecutor
+        }
+        val startLoc = firstLoc.split(",").map { map -> map.toDouble() }
+        val endLoc = secondLoc.split(",").map { map -> map.toDouble() }
+
+        if (DungeonTower.floorData.containsKey(it.args[3])){
+            val data = DungeonTower.floorData[it.args[3]]!!.clone()
+            data.startLoc = Location(DungeonTower.floorWorld,startLoc[0],startLoc[1],startLoc[2])
+            data.endLoc = Location(DungeonTower.floorWorld,endLoc[0],endLoc[1],endLoc[2])
+            CreateFloor(data).open(it.sender)
             return@setPlayerExecutor
         }
         val data = FloorData()
         data.includeName = it.args[3]
-        val startLoc = firstLoc.split(",").map { map -> map.toDouble() }
-        val endLoc = secondLoc.split(",").map { map -> map.toDouble() }
-        data.startLoc = Location(DungeonTower.dungeonWorld,startLoc[0],startLoc[1],startLoc[2])
-        data.endLoc = Location(DungeonTower.dungeonWorld,endLoc[0],endLoc[1],endLoc[2])
+        data.startLoc = Location(DungeonTower.floorWorld,startLoc[0],startLoc[1],startLoc[2])
+        data.endLoc = Location(DungeonTower.floorWorld,endLoc[0],endLoc[1],endLoc[2])
         CreateFloor(data).open(it.sender)
-
     }
 
     @SCommandBody
-    val createTower = opCommand().addArg(SCommandArg("tower")).addArg(SCommandArg("create")).addArg(SCommandArg(SCommandArgType.STRING).addAlias("内部名")).setPlayerExecutor {
+    val createTower = opCommand().addArg(SCommandArg("tower")).addArg(SCommandArg("create")).addArg(SCommandArg(SCommandArgType.STRING).addAlias("内部名").addAlias(DungeonTower.towerData.keys)).setPlayerExecutor {
         if (DungeonTower.towerData.containsKey(it.args[3])){
-            it.sender.sendPrefixMsg(SStr("&c既に存在してるよ！"))
+            CreateTower(DungeonTower.towerData[it.args[3]]!!.clone()).open(it.sender)
             return@setPlayerExecutor
         }
         val data = TowerData()
@@ -188,25 +226,24 @@ class DungeonCommand: SCommand("dungeontower",DungeonTower.prefix.toString(),"to
         CreateTower(data).open(it.sender)
     }
 
+
     @SCommandBody
-    val editTower = opCommand().addArg(SCommandArg("tower")).addArg(SCommandArg("edit")).addArg(SCommandArg(SCommandArgType.STRING).addAlias("内部名").addAlias(DungeonTower.towerData.keys)).setPlayerExecutor {
-        if (!DungeonTower.towerData.containsKey(it.args[3])){
-            it.sender.sendPrefixMsg(SStr("&c存在しないよ！"))
+    val createSpawner = opCommand().addArg(SCommandArg("spawner")).addArg(SCommandArg("create")).addArg(SCommandArg(SCommandArgType.STRING).addAlias("内部名").addAlias(DungeonTower.spawnerData.keys)).setPlayerExecutor {
+        if (DungeonTower.spawnerData.containsKey(it.args[3])){
+            CreateSpawner(DungeonTower.spawnerData[it.args[3]]!!.clone()).open(it.sender)
             return@setPlayerExecutor
         }
-        val data = DungeonTower.towerData[it.args[3]]!!.clone()
-        CreateTower(data).open(it.sender)
-    }
-
-    @SCommandBody
-    val createSpawner = opCommand().addArg(SCommandArg("spawner")).addArg(SCommandArg("create")).addArg(SCommandArg(SCommandArgType.STRING).addAlias("内部名")).setPlayerExecutor {
-        val data = TowerData()
+        val data = SpawnerData()
         data.includeName = it.args[3]
-        CreateTower(data).open(it.sender)
+        CreateSpawner(data).open(it.sender)
     }
 
     @SCommandBody
-    val createLoot = opCommand().addArg(SCommandArg("loot")).addArg(SCommandArg("create")).addArg(SCommandArg(SCommandArgType.STRING).addAlias("内部名")).setPlayerExecutor {
+    val createLoot = opCommand().addArg(SCommandArg("loot")).addArg(SCommandArg("create")).addArg(SCommandArg(SCommandArgType.STRING).addAlias("内部名").addAlias(DungeonTower.lootData.keys)).setPlayerExecutor {
+        if (DungeonTower.lootData.containsKey(it.args[3])){
+            CreateLoot(DungeonTower.lootData[it.args[3]]!!.clone()).open(it.sender)
+            return@setPlayerExecutor
+        }
         val data = LootData()
         data.includeName = it.args[3]
         CreateLoot(data).open(it.sender)

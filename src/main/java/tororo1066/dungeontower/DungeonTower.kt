@@ -78,7 +78,7 @@ class DungeonTower: SJavaPlugin(UseOption.SConfig) {
         }
 
         getCommand("dungeontask")?.setExecutor(DungeonTaskCommand())
-
+        getCommand("dungeontask")?.tabCompleter = DungeonTaskCommand()
 
     }
 

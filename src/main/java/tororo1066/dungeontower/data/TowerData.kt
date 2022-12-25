@@ -23,7 +23,7 @@ class TowerData: Cloneable {
         var preventRandom = 0
         for (floor in floors[floorNum]!!){
             if (preventRandom < random && floor.first + preventRandom > random){
-                return floor.second
+                return floor.second.clone()
             }
             preventRandom = floor.first
         }

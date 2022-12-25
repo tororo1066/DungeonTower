@@ -8,6 +8,7 @@ import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemStack
 import org.bukkit.loot.LootContext
 import org.bukkit.loot.LootTable
+import org.bukkit.persistence.PersistentDataType
 import tororo1066.dungeontower.DungeonTower
 import tororo1066.tororopluginapi.sItem.SItem
 import java.io.File
@@ -23,8 +24,6 @@ class LootData: LootTable, Cloneable {
 
         val returnItems = ArrayList<ItemStack>()
 
-
-
         first@
         for (i in 0..rollAmount) {
             val randomNum = random.nextInt(999999) + 1
@@ -37,7 +36,6 @@ class LootData: LootTable, Cloneable {
                     (1..stackAmount).forEach {
                         returnItems.add(item.third.clone().setItemAmount(64))
                     }
-                    Bukkit.broadcastMessage(item.third.getDisplayName())
                     returnItems.add(item.third.clone().setItemAmount(amount))
                     continue@first
                 }
@@ -48,8 +46,16 @@ class LootData: LootTable, Cloneable {
     }
 
     override fun fillInventory(inventory: Inventory, random: Random, context: LootContext) {
-        inventory.setContents(populateLoot(random, context).toTypedArray())
-        inventory.shuffled(random)
+        var items = populateLoot(random, context).toMutableList()
+        for (i in items.size until inventory.size){
+            items.add(SItem(Material.BARRIER).setCustomData(DungeonTower.plugin,"dloot", PersistentDataType.STRING,"space"))
+        }
+        items = items.shuffled(random).toMutableList()
+        for (item in items.withIndex()){
+            if (item.value.itemMeta.persistentDataContainer.has(NamespacedKey(DungeonTower.plugin,"dloot"),
+                    PersistentDataType.STRING)) items[item.index] = ItemStack(Material.AIR)
+        }
+        inventory.setContents(items.toTypedArray())
     }
 
     override fun getKey(): NamespacedKey {
